@@ -5,7 +5,7 @@ authors = ["袁殷 <2212079150@qq.com>"]
 edition = "2018"
 description = "sink config for rlink"
 keywords = ["rlink"]
-repository = ""
+repository = "https://github.com/yuanyinyan/rlink-sink-conf.git"
 license = "MIT/Apache-2.0"
 
 [lib]
