@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::sink_config::CompareType::{Greater, Smaller};
+use crate::sink_config::CompareType::{Greater, Smaller, GreaterEqual, SmallerEqual};
 use rlink::utils::http::client::get_sync;
 use std::error::Error;
 use dashmap::DashMap;
@@ -37,18 +37,7 @@ pub fn get_sink_topic(expression_param: HashMap<String, String>) -> String {
     for (key, value) in expression_param {
         expression = expression.replace(key.as_str(), value.as_str());
     }
-    let result = match get_compare_type(expression.as_str()) {
-        Ok(compare_type) => match compare_type {
-            Greater(item1, item2) => item1 > item2,
-            Smaller(item1, item2) => item1 < item2,
-            _ => true,
-        },
-        Err(e) => {
-            error!("get compare type error!{}", e);
-            true
-        }
-    };
-    if result {
+    if compute_expression(expression.as_str()) {
         sink_context.topic_true.to_string()
     } else {
         sink_context.topic_false.to_string()
@@ -96,45 +85,50 @@ fn parse_conf_response(string: &str) -> serde_json::Result<ConfigResponse> {
 enum CompareType {
     Greater(i64, i64),
     Smaller(i64, i64),
+    GreaterEqual(i64, i64),
+    SmallerEqual(i64, i64),
     None,
 }
 
+fn compute_expression(expression: &str) -> bool {
+    match get_compare_type(expression) {
+        Ok(compare_type) => match compare_type {
+            Greater(item1, item2) => item1 > item2,
+            Smaller(item1, item2) => item1 < item2,
+            GreaterEqual(item1, item2) => item1 >= item2,
+            SmallerEqual(item1, item2) => item1 <= item2,
+            _ => true,
+        },
+        Err(e) => {
+            error!("get compare type error!{}", e);
+            true
+        }
+    }
+}
+
 fn get_compare_type(expression: &str) -> Result<CompareType, Box<dyn Error>> {
-    if expression.contains(">") {
-        let index = expression.find(">").unwrap();
-        Ok(Greater(
-            expression
-                .get(0..index)
-                .unwrap()
-                .trim()
-                .parse::<i64>()
-                .unwrap_or_default(),
-            expression
-                .get(index + 1..)
-                .unwrap()
-                .trim()
-                .parse::<i64>()
-                .unwrap_or_default(),
-        ))
+    if expression.contains(">=") {
+        let (item1, item2) = get_compare_item(expression, ">=");
+        Ok(GreaterEqual(item1, item2))
+    } else if expression.contains("<=") {
+        let (item1, item2) = get_compare_item(expression, "<=");
+        Ok(SmallerEqual(item1, item2))
+    } else if expression.contains(">") {
+        let (item1, item2) = get_compare_item(expression, ">");
+        Ok(Greater(item1, item2))
     } else if expression.contains("<") {
-        let index = expression.find("<").unwrap();
-        Ok(Smaller(
-            expression
-                .get(0..index)
-                .unwrap()
-                .trim()
-                .parse::<i64>()
-                .unwrap_or_default(),
-            expression
-                .get(index + 1..)
-                .unwrap()
-                .trim()
-                .parse::<i64>()
-                .unwrap_or_default(),
-        ))
+        let (item1, item2) = get_compare_item(expression, "<");
+        Ok(Smaller(item1, item2))
     } else {
         Ok(CompareType::None)
     }
+}
+
+fn get_compare_item(expression: &str, key: &str) -> (i64, i64) {
+    let index = expression.find(key).unwrap();
+    let item1 = expression.get(0..index).unwrap().trim().parse::<i64>().unwrap_or_default();
+    let item2 = expression.get(index + key.len()..).unwrap().trim().parse::<i64>().unwrap_or_default();
+    (item1, item2)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
