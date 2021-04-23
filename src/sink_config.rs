@@ -12,7 +12,9 @@ pub const SINK_CONTEXT_KEY: &str = "sink_context";
 
 pub fn init_sink_config(sink_conf_url: String, application_name: String) {
     let param = KafkaSinkConfParam::new(sink_conf_url, application_name);
-    tokio::runtime::Runtime::new()
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
         .unwrap()
         .block_on(load_remote_conf(&param));
 
