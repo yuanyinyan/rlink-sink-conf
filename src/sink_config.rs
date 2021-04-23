@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use crate::sink_config::CompareType::{Greater, Smaller, GreaterEqual, SmallerEqual};
-use rlink::utils::http::client::get_sync;
+use rlink::utils::http::client::get;
 use std::error::Error;
 use dashmap::DashMap;
+use tokio::time::Instant;
 
 lazy_static! {
     static ref GLOBAL_SINK_CONFIG: DashMap<String, KafkaSinkContext> = DashMap::new();
@@ -20,9 +21,10 @@ pub fn init_sink_config(sink_conf_url: String, application_name: String) {
 
     std::thread::spawn(move || {
         tokio::runtime::Runtime::new().unwrap().block_on(async {
+            let start = Instant::now() + std::time::Duration::from_secs(60);
+            let mut interval = tokio::time::interval_at(start, std::time::Duration::from_secs(60));
             loop {
-                tokio::time::delay_for(std::time::Duration::from_secs(60)).await;
-
+                interval.tick().await;
                 load_remote_conf(&param).await;
             }
         });
@@ -48,17 +50,17 @@ pub fn get_sink_topic(expression_param: HashMap<String, String>) -> String {
 
 async fn load_remote_conf(param: &KafkaSinkConfParam) {
     let sink_context =
-        get_config_data(param).unwrap_or(KafkaSinkContext::new());
+        get_config_data(param).await.unwrap_or(KafkaSinkContext::new());
     let sink_config: &DashMap<String, KafkaSinkContext> = &*GLOBAL_SINK_CONFIG;
     sink_config.insert(SINK_CONTEXT_KEY.to_string(), sink_context);
 }
 
-fn get_config_data(sink_conf_param: &KafkaSinkConfParam) -> Option<KafkaSinkContext> {
+async fn get_config_data(sink_conf_param: &KafkaSinkConfParam) -> Option<KafkaSinkContext> {
     let url = format!(
         "{}?applicationName={}",
         sink_conf_param.url, sink_conf_param.application_name
     );
-    match get_sync(url.as_str()) {
+    match get(url.as_str()).await {
         Ok(resp) => {
             info!("sink config response={}", resp);
             match parse_conf_response(resp.as_str()) {
