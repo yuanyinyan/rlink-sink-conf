@@ -1,6 +1,6 @@
 [package]
 name = "rlink-sink-conf"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["袁殷 <2212079150@qq.com>"]
 edition = "2018"
 description = "sink config for rlink"
@@ -12,7 +12,7 @@ license = "MIT/Apache-2.0"
 name = "rlink_sink_conf"
 
 [dependencies]
-rlink = "0.2"
+rlink = "0.3"
 
 log = "0.4"
 
