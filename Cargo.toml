@@ -1,6 +1,6 @@
 [package]
 name = "rlink-sink-conf"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["袁殷 <2212079150@qq.com>"]
 edition = "2018"
 description = "sink config for rlink"
