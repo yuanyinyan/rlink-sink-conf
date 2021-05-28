@@ -1,8 +1,8 @@
-use std::collections::HashMap;
-use crate::sink_config::CompareType::{Greater, Smaller, GreaterEqual, SmallerEqual};
-use rlink::utils::http::client::get;
-use std::error::Error;
+use crate::sink_config::CompareType::{Greater, GreaterEqual, Smaller, SmallerEqual};
 use dashmap::DashMap;
+use rlink::utils::http::client::get;
+use std::collections::HashMap;
+use std::error::Error;
 use tokio::time::Instant;
 
 lazy_static! {
@@ -49,10 +49,13 @@ pub fn get_sink_topic(expression_param: HashMap<String, String>) -> String {
 }
 
 async fn load_remote_conf(param: &KafkaSinkConfParam) {
-    let sink_context =
-        get_config_data(param).await.unwrap_or(KafkaSinkContext::new());
-    let sink_config: &DashMap<String, KafkaSinkContext> = &*GLOBAL_SINK_CONFIG;
-    sink_config.insert(SINK_CONTEXT_KEY.to_string(), sink_context);
+    match get_config_data(param).await {
+        Some(sink_context) => {
+            let sink_config: &DashMap<String, KafkaSinkContext> = &*GLOBAL_SINK_CONFIG;
+            sink_config.insert(SINK_CONTEXT_KEY.to_string(), sink_context);
+        }
+        None => {}
+    };
 }
 
 async fn get_config_data(sink_conf_param: &KafkaSinkConfParam) -> Option<KafkaSinkContext> {
@@ -130,8 +133,18 @@ fn get_compare_type(expression: &str) -> Result<CompareType, Box<dyn Error>> {
 
 fn get_compare_item(expression: &str, key: &str) -> (i64, i64) {
     let index = expression.find(key).unwrap();
-    let item1 = expression.get(0..index).unwrap().trim().parse::<i64>().unwrap_or_default();
-    let item2 = expression.get(index + key.len()..).unwrap().trim().parse::<i64>().unwrap_or_default();
+    let item1 = expression
+        .get(0..index)
+        .unwrap()
+        .trim()
+        .parse::<i64>()
+        .unwrap_or_default();
+    let item2 = expression
+        .get(index + key.len()..)
+        .unwrap()
+        .trim()
+        .parse::<i64>()
+        .unwrap_or_default();
     (item1, item2)
 }
 
