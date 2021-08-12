@@ -30,7 +30,7 @@ pub mod sink_config;
 
 #[cfg(test)]
 mod tests {
-    use crate::sink_config::{init_sink_config, get_sink_topic};
+    use crate::sink_config::{get_sink_topic, init_sink_config};
     use std::collections::HashMap;
 
     #[test]
@@ -43,7 +43,7 @@ mod tests {
 
         let mut expression_param = HashMap::new();
         expression_param.insert("timestamp".to_string(), timestamp.to_string());
-        let _sink_topic = get_sink_topic(expression_param);
-        println!()
+        let sink_topic = get_sink_topic(expression_param);
+        println!("{}", sink_topic)
     }
 }
